@@ -1,6 +1,7 @@
-import { isEmpty,size} from 'lodash'
-import React,{useState} from 'react'
-import shortid from 'shortid'
+import { isEmpty,result,size, sortBy} from 'lodash'
+import React,{useState,useEffect} from 'react'
+//import shortid from 'shortid'
+import {addDocument,deleteDocument,getCollection, updateDocument,}from './actions'
 
 
 function App() {
@@ -10,6 +11,15 @@ const [editMode, setEditMode] = useState(false)
 //id en memoria para editar
 const [id, setId] = useState("")
 const [error, setError] = useState(null)
+
+useEffect(() => {
+  (async()=>{
+    const result= await getCollection("tasks")
+    if(result.statusResponse){
+      setTasks(result.data)
+    }
+  })()
+  }, [])
 
 const validForm=()=>{
   let isValid=true
@@ -21,23 +31,35 @@ const validForm=()=>{
   return isValid
 }
 
-const addTask=(e)=>{
+const addTask=async(e)=>{
   e.preventDefault()
   if(!validForm()){
   return
   }
-const newTask={
+const result= await addDocument("tasks",{name:task})
+if(!result.statusResponse){
+  setError(result.error)
+  return
+}
+
+/*const newTask={
   id:shortid.generate(),
   name:task
-}
+}*/
 //metodo
-setTasks([...tasks,newTask])
+setTasks([...tasks,{id:result.data.id,name:task}])
 setTask("")
 }
 
 //Delete task
 
-const deleteTask=(id)=>{
+const deleteTask= async(id)=>{
+
+  const result = await deleteDocument("tasks",id)
+  if(!result.statusResponse){
+    setError=result.error
+    return
+  }
   //filtrame las tareas donde el id de la tarea sea diferente al id.parametro
   const filterTasks=tasks.filter(task=>task.id !== id)
   setTasks(filterTasks)
@@ -52,11 +74,18 @@ const editTask=(theTask)=>{
   setId(theTask.id)//guardo el id en memoria
 }
 //saveTask
-const saveTask=(e)=>{
+const saveTask=async(e)=>{
   e.preventDefault()
   if(!validForm()){
     return
     }
+ 
+const result= await updateDocument("tasks",id,{name:task})
+if(!result.statusResponse)
+{
+  setError=result.error
+  return
+}
 //metodo
 //si item.id que estoy editando es el mismo al que tengo
 //contruye un nuevo item con el mismo id y el nuevo nombre
@@ -76,7 +105,7 @@ const editedTasks=tasks.map(item=>item.id===id
       <hr></hr>
       <div className="row">
         <div className="col-8">
-          <h4 className="text-center">Lista de Tarea</h4>
+          <h4 className="text-center">Lista de Tareas</h4>
           {
            size(tasks) ===0 ? (<li className="list-group-item">No hay tareas progrmadas</li>)
            :(
